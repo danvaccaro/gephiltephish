@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Text Classification</title>
+    <script>
+        async function classifyText() {
+            const inputText = document.getElementById('inputText').value;
+            const response = await fetch('/classify', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: inputText })
+            });
+            const result = await response.json();
+            document.getElementById('result').innerText = 'Classification: ' + result.classification;
+        }
+    </script>
+</head>
+<body>
+    <h1>Text Classification</h1>
+    <textarea id="inputText" rows="4" cols="50"></textarea><br>
+    <button onclick="classifyText()">Classify</button>
+    <p id="result"></p>
+</body>
+</html>
