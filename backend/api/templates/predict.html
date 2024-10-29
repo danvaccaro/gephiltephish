@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predict Phishing Email</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Predict Phishing Email</h1>
+    <form id="predict-form">
+        <label for="sender">Sender:</label><br>
+        <input type="text" id="sender" name="sender" required><br>
+        <label for="subject">Subject:</label><br>
+        <input type="text" id="subject" name="subject" required><br>
+        <label for="body">Body:</label><br>
+        <textarea id="body" name="body" rows="4" cols="50" required></textarea><br>
+        <input type="submit" value="Predict">
+    </form>
+    <div id="result"></div>
+
+    <script>
+        $(document).ready(function() {
+            $('#predict-form').submit(function(e) {
+                e.preventDefault();
+                $.ajax({
+                    url: '/api/predict/',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        sender: $('#sender').val(),
+                        subject: $('#subject').val(),
+                        body: $('#body').val()
+                    }),
+                    success: function(response) {
+                        $('#result').text('Prediction: ' + response.classification);
+                    },
+                    error: function(xhr, status, error) {
+                        $('#result').text('Error: ' + error);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>

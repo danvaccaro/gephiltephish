@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Voting</title>
+    <script>
+        function vote(emailId, voteType) {
+            const csrfToken = getCookie('csrftoken');
+            console.log('CSRF Token:', csrfToken); // Log the CSRF token
+
+            const data = {
+                email_id: emailId,
+                vote_type: voteType === 'phishing' ? 'yes' : 'no',
+                userid: 1  // Placeholder user ID
+            };
+
+            console.log('Sending data:', data); // Log the data being sent
+
+            fetch('/api/vote/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                console.log('Response status:', response.status); // Log the response status
+                return response.text(); // Change this to text() instead of json()
+            })
+            .then(text => {
+                console.log('Response text:', text); // Log the raw response text
+                const data = JSON.parse(text); // Try to parse the JSON
+                if (data.message) {
+                    const emailElement = document.getElementById(`email-${emailId}`);
+                    const phishingButton = emailElement.querySelector('.phishing-button');
+                    const legitimateButton = emailElement.querySelector('.legitimate-button');
+                    
+                    phishingButton.textContent = `Phishing (${data.votes_phishing})`;
+                    legitimateButton.textContent = `Legitimate (${data.votes_legitimate})`;
+                } else {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while voting. Please try again.');
+            });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</head>
+<body>
+    <h1>Vote on Emails</h1>
+    {% csrf_token %}
+    <ul>
+        {% for email in emails %}
+            <li id="email-{{ email.id }}">
+                <p>{{ email.id }} {{ email.body }}</p>
+                <button class="phishing-button" onclick="vote('{{ email.id }}', 'phishing')">
+                    Phishing ({{ email.votes_phishing }})
+                </button>
+                <button class="legitimate-button" onclick="vote('{{ email.id }}', 'legitimate')">
+                    Legitimate ({{ email.votes_legitimate }})
+                </button>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
