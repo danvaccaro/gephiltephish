@@ -1,14 +1,43 @@
-app/datasets/*
-docker-compose.yml
-backend/db.sqlite3
-backend/manage.py
-backend/gephiltephish_backend/__pycache__/__init__.cpython-39.pyc
-backend/gephiltephish_backend/__pycache__/settings.cpython-39.pyc
-backend/gephiltephish_backend/__pycache__/urls.cpython-39.pyc
-backend/gephiltephish_backend/__pycache__/wsgi.cpython-39.pyc
-backend/gephiltephish_backend/wsgi.py
-backend/gephiltephish_backend/urls.py
-backend/gephiltephish_backend/settings.py
-backend/gephiltephish_backend/asgi.py
-backend/gephiltephish_backend/__init__.py
-backend/wait-for-it.sh
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Django settings and secrets
+*.env
+config/settings/local.py
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Static and media files
+staticfiles/
+media/
+
+# Virtual environment
+venv/
+.env/
+
+# Logs and temp files
+*.log
+logs/
+*.tmp
+*.temp
+*.pid
+
+# IDE-specific files
+.vscode/
+.idea/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Django migrations
+**/migrations/*.py[cod]
+**/migrations/__pycache__/
+**/migrations/
+
+.archive/
+
