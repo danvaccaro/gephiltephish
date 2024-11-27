@@ -63,7 +63,7 @@ export default function EmailCard({ email, onVote, onDelete }: EmailCardProps) {
         <div className="bg-zinc-50 dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-lg p-6 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors">
             <div className="mb-4">
                 <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-slate-100">
+                    <h2 className="text-xl font-semibold text-zinc-900 dark:text-slate-100 whitespace-pre-wrap">
                         {email.subject}
                     </h2>
                     {email.is_mine && (
@@ -98,7 +98,7 @@ export default function EmailCard({ email, onVote, onDelete }: EmailCardProps) {
                     </button>
                     {showContent && (
                         <div className="bg-white dark:bg-slate-800 rounded p-3">
-                            <p className="text-sm text-zinc-800 dark:text-slate-300">
+                            <p className="text-sm text-zinc-800 dark:text-slate-300 whitespace-pre-wrap">
                                 {email.content}
                             </p>
                         </div>

@@ -31,21 +31,6 @@ def process_text(text):
     processed_text = ''.join(char for char in processed_text if char.isalnum() or char.isspace())
     return processed_text
 
-def redact_pii(text: str) -> str:
-    # Redact email addresses
-    res = re.sub(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', '[REDACTED_EMAIL]', text, flags=re.IGNORECASE)
-    
-    # Redact phone numbers
-    res = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[REDACTED_PHONE]', res)
-    
-    # Redact credit card numbers
-    res = re.sub(r'\b\d{4}[-.]?\d{4}[-.]?\d{4}[-.]?\d{4}\b', '[REDACTED_CC]', res)
-    
-    # Redact SSNs
-    res = re.sub(r'\b\d{3}[-.]?\d{2}[-.]?\d{4}\b', '[REDACTED_SSN]', res)
-    
-    return res
-
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = (AllowAny,)
@@ -102,18 +87,14 @@ def submit(request):
             return Response({"error": "sender_domain, content, subject, and date are required"},
                           status=status.HTTP_400_BAD_REQUEST)
 
-        # Redact PII from the email
-        redacted_subject = redact_pii(subject)
-        redacted_content = redact_pii(content)
-
-        # Save the email to the database
+        # Save the email to the database with content already redacted from frontend
         try:
             email = Email.objects.create(
                 user=request.user,
                 sender_domain=sender_domain,
-                subject=redacted_subject,
+                subject=subject,
                 date=date,
-                content=redacted_content,
+                content=content,
                 created_at=timezone.now(),
                 votes_phishing=0,
                 votes_legitimate=0

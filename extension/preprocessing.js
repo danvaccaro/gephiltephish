@@ -52,40 +52,96 @@ function htmlToText(html) {
         const temp = document.createElement('div');
         temp.innerHTML = html;
         
-        // Replace common HTML elements with text equivalents
+        // Remove all style and class attributes
+        const allElements = temp.getElementsByTagName('*');
+        for (let i = 0; i < allElements.length; i++) {
+            allElements[i].removeAttribute('style');
+            allElements[i].removeAttribute('class');
+        }
+
+        // Remove style tags and their contents
+        const styleTags = temp.getElementsByTagName('style');
+        while (styleTags.length > 0) {
+            styleTags[0].parentNode.removeChild(styleTags[0]);
+        }
+
+        // Remove script tags
+        const scriptTags = temp.getElementsByTagName('script');
+        while (scriptTags.length > 0) {
+            scriptTags[0].parentNode.removeChild(scriptTags[0]);
+        }
+
+        // Remove image tags
+        const imageTags = temp.getElementsByTagName('img');
+        while (imageTags.length > 0) {
+            imageTags[0].parentNode.removeChild(imageTags[0]);
+        }
+
+        // Replace anchor tags with just their text content
+        const anchorTags = temp.getElementsByTagName('a');
+        for (let i = anchorTags.length - 1; i >= 0; i--) {
+            const anchor = anchorTags[i];
+            const text = anchor.textContent || '';
+            anchor.replaceWith(text);
+        }
+        
+        // Handle specific HTML elements
         const elements = temp.getElementsByTagName('*');
         for (let i = elements.length - 1; i >= 0; i--) {
             const el = elements[i];
             
-            // Handle lists
-            if (el.tagName === 'LI') {
-                el.textContent = '• ' + el.textContent;
-            }
-            
-            // Add newlines after block elements
-            if (getComputedStyle(el).display === 'block') {
-                el.textContent = el.textContent + '\n';
-            }
-            
-            // Handle links
-            if (el.tagName === 'A' && el.href) {
-                el.textContent = `${el.textContent} (${el.href})`;
+            switch (el.tagName.toLowerCase()) {
+                case 'br':
+                    el.replaceWith('\n');
+                    break;
+                case 'p':
+                case 'div':
+                case 'h1':
+                case 'h2':
+                case 'h3':
+                case 'h4':
+                case 'h5':
+                case 'h6':
+                case 'header':
+                case 'footer':
+                case 'section':
+                case 'article':
+                    el.innerHTML += '\n';
+                    break;
+                case 'li':
+                    el.textContent = '• ' + el.textContent + '\n';
+                    break;
+                case 'tr':
+                    el.innerHTML += '\n';
+                    break;
+                case 'td':
+                case 'th':
+                    el.innerHTML += '\t';
+                    break;
             }
         }
         
         // Get the text content and clean it up
         let text = temp.textContent || temp.innerText || '';
         
-        // Clean up extra whitespace while preserving intentional line breaks
+        // Clean up whitespace while preserving intentional line breaks
         text = text.split('\n')
                   .map(line => line.trim())
                   .filter(line => line)
                   .join('\n');
         
+        // Remove any remaining HTML tags using regex
+        text = text.replace(/<[^>]*>/g, '');
+        
+        // Clean up multiple consecutive line breaks and spaces
+        text = text.replace(/\n{3,}/g, '\n\n')
+                  .replace(/[ \t]+/g, ' ')
+                  .trim();
+        
         return text;
     } catch (error) {
         console.error('Error converting HTML to text:', error);
-        return html; // Return original HTML if conversion fails
+        return html.replace(/<[^>]*>/g, ''); // Fallback to simple tag stripping
     }
 }
 
@@ -107,20 +163,23 @@ export function preprocessEmailBody(content) {
             .replace(/&quot;/g, '"')
             .replace(/&#039;/g, "'")
             .replace(/&#x27;/g, "'")
-            .replace(/&#x2F;/g, "/");
+            .replace(/&#x2F;/g, "/")
+            .replace(/&nbsp;/g, ' ');
         
         // Convert HTML to plain text
         const plainText = htmlToText(decodedContent);
         
         // Clean the text of any problematic characters
         const cleanText = plainText.replace(/[\uFEFF\uFFFD]/g, '') // Remove BOM and replacement characters
-                                 .replace(/\u0000/g, ''); // Remove null characters
+                                 .replace(/\u0000/g, '') // Remove null characters
+                                 .replace(/\r\n/g, '\n') // Normalize line endings
+                                 .replace(/\r/g, '\n');
         
         console.log('Preprocessed content length:', cleanText.length);
         return cleanText;
     } catch (error) {
         console.error('Error preprocessing content:', error);
-        return content || ''; // Return original content or empty string if null
+        return content?.replace(/<[^>]*>/g, '') || ''; // Fallback to simple tag stripping
     }
 }
 
@@ -142,17 +201,22 @@ export function preprocessSubject(subject) {
             .replace(/&quot;/g, '"')
             .replace(/&#039;/g, "'")
             .replace(/&#x27;/g, "'")
-            .replace(/&#x2F;/g, "/");
+            .replace(/&#x2F;/g, "/")
+            .replace(/&nbsp;/g, ' ');
+        
+        // Remove any HTML tags
+        const strippedSubject = decodedSubject.replace(/<[^>]*>/g, '');
         
         // Clean the text of any problematic characters
-        const cleanSubject = decodedSubject.replace(/[\uFEFF\uFFFD]/g, '') // Remove BOM and replacement characters
-                                         .replace(/\u0000/g, '') // Remove null characters
-                                         .trim();
+        const cleanSubject = strippedSubject.replace(/[\uFEFF\uFFFD]/g, '') // Remove BOM and replacement characters
+                                          .replace(/\u0000/g, '') // Remove null characters
+                                          .replace(/\s+/g, ' ') // Normalize whitespace
+                                          .trim();
         
         return cleanSubject;
     } catch (error) {
         console.error('Error preprocessing subject:', error);
-        return subject || ''; // Return original subject or empty string if null
+        return subject?.replace(/<[^>]*>/g, '').trim() || ''; // Fallback to simple tag stripping
     }
 }
 
@@ -177,7 +241,7 @@ export function extractURLs(content) {
         
         // Extract href attributes
         for (const link of links) {
-            if (link.href) {
+            if (link.href && !link.href.startsWith('javascript:')) {
                 try {
                     // Ensure URL is properly formatted
                     const url = new URL(link.href).toString();

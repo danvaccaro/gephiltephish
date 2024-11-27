@@ -296,8 +296,17 @@ function getRedactedText(text) {
   // Apply custom redactions
   customPatterns.forEach(pattern => {
     if (pattern) {
-      const regex = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      result = result.replace(regex, '[REDACTED]');
+      try {
+        // Try to use the pattern as a regex first
+        const regex = new RegExp(pattern, 'gi');
+        result = result.replace(regex, '[REDACTED]');
+      } catch (e) {
+        // If pattern is not a valid regex, treat it as literal text
+        // Add 'g' flag to ensure all occurrences are replaced
+        const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const literalRegex = new RegExp(escapedPattern, 'gi'); // Added 'g' flag here
+        result = result.replace(literalRegex, '[REDACTED]');
+      }
     }
   });
 
