@@ -152,6 +152,12 @@
     .delete-pattern:hover {
       background-color: #c82333;
     }
+    .help-text {
+      font-size: 0.85rem;
+      color: #6c757d;
+      margin-top: 5px;
+      margin-bottom: 10px;
+    }
   </style>
 </head>
 <body>
@@ -179,14 +185,8 @@
     </div>
 
     <div class="section">
-      <div class="section-title">URLs in Email</div>
-      <div id="urlList" class="url-list">
-        <!-- URLs will be dynamically added here -->
-      </div>
-    </div>
-
-    <div class="section">
       <div class="section-title">Custom Patterns</div>
+      <div class="help-text">Enter patterns to redact. These will be applied to all text including URLs (e.g., "user123" will redact both standalone text and URLs containing it)</div>
       <div class="custom-pattern">
         <input type="text" id="customText" placeholder="Enter text to redact (comma-separated for multiple)">
         <button id="addCustom" class="secondary-button">Add</button>
@@ -206,6 +206,13 @@
       <div class="preview">
         <div class="preview-title">Content:</div>
         <div id="previewContent"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">URLs in Email</div>
+      <div id="urlList" class="url-list">
+        <!-- URLs will be dynamically added here -->
       </div>
     </div>
 
