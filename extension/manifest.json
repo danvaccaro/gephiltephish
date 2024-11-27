@@ -1,0 +1,36 @@
+{
+    "manifest_version": 2,
+    "name": "gephiltephish",
+    "version": "1.0",
+    "description": "Preprocesses emails for phishing detection using NLP analysis",
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "gephiltephish@gephiltephish.com",
+        "strict_min_version": "78.0"
+      }
+    },
+    "icons": {
+      "32": "icons/icon-32.png"
+    },
+    "background": {
+      "scripts": ["background.js"],
+      "type": "module"
+    },
+    "permissions": [
+      "menus",
+      "messagesRead",
+      "messagesModify",
+      "accountsRead",
+      "storage",
+      "cookies",
+      "http://localhost/*",
+      "https://localhost/*"
+    ],
+    "browser_action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "32": "icons/icon-32.png"
+      }
+    },
+    "content_security_policy": "default-src 'self'; connect-src http://localhost:* https://localhost:* moz-extension://*; script-src 'self'; style-src 'self' 'unsafe-inline'"
+}

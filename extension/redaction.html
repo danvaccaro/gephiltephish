@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Redact Sensitive Information</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #343a40;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #495057;
+    }
+    .checkbox-group {
+      margin-bottom: 15px;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .custom-pattern {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .primary-button {
+      background-color: #007bff;
+      color: white;
+    }
+    .primary-button:hover {
+      background-color: #0056b3;
+    }
+    .secondary-button {
+      background-color: #6c757d;
+      color: white;
+    }
+    .secondary-button:hover {
+      background-color: #545b62;
+    }
+    .preview {
+      border: 1px solid #dee2e6;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      background-color: #fff;
+    }
+    .preview-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #495057;
+    }
+    .redacted {
+      background-color: #ffc107;
+      padding: 2px 4px;
+      border-radius: 2px;
+      font-weight: 500;
+    }
+    .button-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    #statusMessage {
+      display: none;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .status-success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .status-error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .url-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+    }
+    .saved-patterns {
+      margin-top: 10px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+    .pattern-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .pattern-item:last-child {
+      border-bottom: none;
+    }
+    .delete-pattern {
+      background-color: #dc3545;
+      color: white;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+    }
+    .delete-pattern:hover {
+      background-color: #c82333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Redact Sensitive Information</h1>
+    
+    <div id="statusMessage"></div>
+
+    <div class="section">
+      <div class="section-title">Standard Redactions</div>
+      <div class="checkbox-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="redactEmails" checked>
+          Redact Email Addresses
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="redactPhones" checked>
+          Redact Phone Numbers
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="redactSSN" checked>
+          Redact Social Security Numbers
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">URLs in Email</div>
+      <div id="urlList" class="url-list">
+        <!-- URLs will be dynamically added here -->
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Custom Patterns</div>
+      <div class="custom-pattern">
+        <input type="text" id="customText" placeholder="Enter text to redact (comma-separated for multiple)">
+        <button id="addCustom" class="secondary-button">Add</button>
+        <button id="saveCustom" class="primary-button">Save</button>
+      </div>
+      <div id="savedPatterns" class="saved-patterns">
+        <!-- Saved patterns will be displayed here -->
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Preview</div>
+      <div class="preview">
+        <div class="preview-title">Subject:</div>
+        <div id="previewSubject"></div>
+      </div>
+      <div class="preview">
+        <div class="preview-title">Content:</div>
+        <div id="previewContent"></div>
+      </div>
+    </div>
+
+    <div class="button-group">
+      <button id="cancelButton" class="secondary-button">Cancel</button>
+      <button id="submitButton" class="primary-button">Submit Email</button>
+    </div>
+  </div>
+
+  <script type="module" src="redaction.js"></script>
+</body>
+</html>
