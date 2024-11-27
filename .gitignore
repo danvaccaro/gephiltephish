@@ -5,6 +5,11 @@ __pycache__/
 
 # Django settings and secrets
 *.env
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 config/settings/local.py
 
 # Database
@@ -18,6 +23,8 @@ media/
 # Virtual environment
 venv/
 .env/
+.venv/
+env/
 
 # Logs and temp files
 *.log
@@ -29,15 +36,63 @@ logs/
 # IDE-specific files
 .vscode/
 .idea/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
 
 # OS-specific files
 .DS_Store
 Thumbs.db
+.directory
+desktop.ini
 
 # Django migrations
 **/migrations/*.py[cod]
 **/migrations/__pycache__/
-**/migrations/
 
+# SSL Certificates
+*.crt
+*.key
+*.pem
+backend/certs/
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.cache/
+coverage/
+
+# ML Models
+# Uncomment if you want to ignore ML models
+*.pkl
+# *.h5
+# *.model
+
+# Browser Extension
+extension/dist/
+*.zip
+
+# Archive
 .archive/
 
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.DS_Store*
+*.bak
+*.swp
+*.swo
+*~
