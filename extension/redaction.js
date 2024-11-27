@@ -14,6 +14,7 @@ let customPatterns = new Set();
 let currentAction = 'submit'; // Default to submit if not specified
 let extractedUrls = new Set();
 let redactedUrls = new Set();
+let originalUrlMap = new Map(); // Map to store original URLs and their redacted versions
 
 function showStatus(message, isError = false) {
   const statusDiv = document.getElementById('statusMessage');
@@ -66,6 +67,7 @@ async function deletePattern(pattern) {
     customPatterns.delete(pattern);
     await savePatterns();
     updatePreview();
+    updateUrlList(); // Update URL list to reflect pattern removal
   } catch (error) {
     console.error('Error deleting pattern:', error);
     showStatus('Error deleting pattern', true);
@@ -100,6 +102,61 @@ function updateSavedPatternsUI() {
   });
 }
 
+// Helper function to clean text of problematic Unicode characters
+function cleanText(text) {
+  return text
+    // Remove zero-width characters, soft hyphens, and other invisible Unicode
+    .replace(/[\u200B-\u200F\u2028-\u202F\u2060-\u206F\uFEFF\u0000-\u001F\u00AD\u034F]/g, '')
+    // Replace Unicode whitespace characters with regular space
+    .replace(/[\u2000-\u200A\u202F\u205F\u3000]/g, ' ')
+    // Normalize multiple horizontal spaces to single space, preserving newlines
+    .replace(/[^\S\n]+/g, ' ')
+    .trim();
+}
+
+// Helper function to normalize line breaks in text
+function normalizeLineBreaks(text) {
+  // First split into lines and clean each line
+  const lines = text.split('\n');
+  let result = '';
+  let consecutiveEmptyLines = 0;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const cleanedLine = cleanText(lines[i]);
+    
+    // If the line was just invisible characters, it will now be empty
+    if (!cleanedLine) {
+      consecutiveEmptyLines++;
+      // Only add newline if we haven't exceeded 2 consecutive empty lines
+      if (consecutiveEmptyLines <= 2) {
+        result += '\n';
+      }
+    } else {
+      consecutiveEmptyLines = 0;
+      result += (result ? '\n' : '') + cleanedLine;
+    }
+  }
+  
+  return result.trim();
+}
+
+// Helper function to convert HTML content to text while preserving line breaks
+function getFormattedContent(element) {
+  // Replace <br> tags with newline characters
+  const html = element.innerHTML;
+  // First convert <br> tags to newlines
+  let content = html.replace(/<br\s*\/?>/gi, '\n');
+  // Then strip any remaining HTML tags
+  content = content.replace(/<[^>]*>/g, '');
+  // Decode any HTML entities
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = content;
+  content = tempDiv.textContent;
+  
+  // Clean and normalize line breaks
+  return normalizeLineBreaks(content);
+}
+
 // Initialize elements
 document.addEventListener('DOMContentLoaded', async () => {
   try {
@@ -130,11 +187,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         originalSubject = utils.safeDecodeURIComponent(encodedSubject);
         originalContent = utils.safeDecodeURIComponent(encodedContent);
         
+        // Clean and normalize line breaks in original content
+        originalContent = normalizeLineBreaks(originalContent);
+        
         // Decode URLs if present
         if (encodedUrls) {
           const decodedUrls = utils.safeDecodeURIComponent(encodedUrls);
           const urls = JSON.parse(decodedUrls);
           extractedUrls = new Set(urls);
+          // Store original URLs
+          urls.forEach(url => originalUrlMap.set(url, url));
           console.log('Loaded URLs:', urls);
         }
         
@@ -174,6 +236,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         customInput.value = '';
         updatePreview();
         updateSavedPatternsUI();
+        updateUrlList(); // Update URL list to reflect new patterns
         showStatus(`Added ${newPatterns.length} custom pattern(s)`);
       }
     });
@@ -205,8 +268,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           return;
         }
 
-        const redactedSubject = getRedactedText(originalSubject);
-        const redactedContent = getRedactedText(originalContent);
+        // Get the redacted content while preserving formatting
+        const subjectElement = document.getElementById('previewSubject');
+        const contentElement = document.getElementById('previewContent');
+        
+        const redactedSubject = getFormattedContent(subjectElement);
+        const redactedContent = getFormattedContent(contentElement);
         
         console.log('Processing redacted subject length:', redactedSubject.length);
         console.log('Processing redacted content length:', redactedContent.length);
@@ -215,7 +282,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await messenger.runtime.sendMessage({
           type: currentAction === 'predict' ? 'PREDICT_REDACTED_EMAIL' : 'SUBMIT_REDACTED_EMAIL',
           subject: redactedSubject,
-          content: redactedContent
+          content: redactedContent,
+          urls: Array.from(extractedUrls).map(url => getRedactedText(url)) // Send redacted URLs
         });
         
         // Close the redaction window
@@ -232,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (urlList) {
       urlList.addEventListener('change', (e) => {
         if (e.target.type === 'checkbox') {
-          const url = e.target.value;
+          const url = originalUrlMap.get(e.target.value) || e.target.value;
           if (e.target.checked) {
             redactedUrls.add(url);
           } else {
@@ -247,6 +315,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     showStatus('Error initializing redaction window', true);
   }
 });
+
+function applyCustomPatterns(text) {
+  let result = text;
+  // Apply custom redactions
+  customPatterns.forEach(pattern => {
+    if (pattern) {
+      try {
+        // Try to use the pattern as a regex first
+        const regex = new RegExp(pattern, 'gi');
+        result = result.replace(regex, '[REDACTED]');
+      } catch (e) {
+        // If pattern is not a valid regex, treat it as literal text
+        const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const literalRegex = new RegExp(escapedPattern, 'gi');
+        result = result.replace(literalRegex, '[REDACTED]');
+      }
+    }
+  });
+  return result;
+}
 
 function updateUrlList() {
   const urlList = document.getElementById('urlList');
@@ -268,9 +356,14 @@ function updateUrlList() {
       
       const label = document.createElement('label');
       label.htmlFor = `url-${url}`;
-      label.textContent = url;
+      // Apply redaction to URL display
+      const redactedUrl = getRedactedText(url);
+      label.textContent = redactedUrl;
       label.style.marginLeft = '8px';
       label.style.wordBreak = 'break-all';
+      
+      // Update the URL map with redacted version
+      originalUrlMap.set(redactedUrl, url);
       
       div.appendChild(checkbox);
       div.appendChild(label);
@@ -293,24 +386,10 @@ function getRedactedText(text) {
     result = result.replace(PATTERNS.ssn, '[REDACTED SSN]');
   }
 
-  // Apply custom redactions
-  customPatterns.forEach(pattern => {
-    if (pattern) {
-      try {
-        // Try to use the pattern as a regex first
-        const regex = new RegExp(pattern, 'gi');
-        result = result.replace(regex, '[REDACTED]');
-      } catch (e) {
-        // If pattern is not a valid regex, treat it as literal text
-        // Add 'g' flag to ensure all occurrences are replaced
-        const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const literalRegex = new RegExp(escapedPattern, 'gi'); // Added 'g' flag here
-        result = result.replace(literalRegex, '[REDACTED]');
-      }
-    }
-  });
+  // Apply custom patterns to all content including URLs
+  result = applyCustomPatterns(result);
 
-  // Apply URL redactions
+  // Apply specific URL redactions after patterns
   redactedUrls.forEach(url => {
     const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const urlRegex = new RegExp(escapedUrl, 'g');
@@ -346,7 +425,13 @@ function updatePreview() {
   const highlightRedactions = text => 
     text.replace(/\[REDACTED[^\]]*\]/g, match => `<span class="redacted">${match}</span>`);
   
-  subjectDiv.innerHTML = highlightRedactions(redactedSubject);
-  contentDiv.innerHTML = highlightRedactions(redactedContent)
-    .replace(/\n/g, '<br>'); // Preserve line breaks
+  subjectDiv.innerHTML = highlightRedactions(cleanText(redactedSubject));
+  
+  // Handle line breaks in content preview
+  const formattedContent = normalizeLineBreaks(redactedContent)
+    .split('\n')
+    .map(line => highlightRedactions(line))
+    .join('<br>');
+  
+  contentDiv.innerHTML = formattedContent;
 }
