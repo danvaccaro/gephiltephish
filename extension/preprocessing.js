@@ -221,9 +221,25 @@ export function preprocessSubject(subject) {
 }
 
 /**
- * Extracts URLs from the email content
+ * Helper function to safely extract domain from URL
+ * @param {string} urlString - The URL to process
+ * @returns {string|null} The domain if valid, null otherwise
+ */
+function extractDomain(urlString) {
+    try {
+        const url = new URL(urlString);
+        const domain = url.hostname.trim();
+        return domain ? domain : null;  // Return null if domain is empty
+    } catch (e) {
+        console.warn('Invalid URL found:', urlString);
+        return null;
+    }
+}
+
+/**
+ * Extracts URLs from the email content and returns them in a format compatible with redaction
  * @param {string} content - The raw email content
- * @returns {string[]} Array of extracted URLs
+ * @returns {string[]} Array of domain-based URLs with counts
  */
 export function extractURLs(content) {
     console.log('extractURLs received content length:', content?.length || 0);
@@ -235,19 +251,18 @@ export function extractURLs(content) {
         const temp = document.createElement('div');
         temp.innerHTML = content;
         
+        // Object to store domain counts
+        const domainCounts = {};
+        
         // Get all links from HTML
         const links = temp.getElementsByTagName('a');
-        const urlSet = new Set();
         
-        // Extract href attributes
+        // Extract domains from href attributes
         for (const link of links) {
             if (link.href && !link.href.startsWith('javascript:')) {
-                try {
-                    // Ensure URL is properly formatted
-                    const url = new URL(link.href).toString();
-                    urlSet.add(url);
-                } catch (e) {
-                    console.warn('Invalid URL found:', link.href);
+                const domain = extractDomain(link.href);
+                if (domain) {
+                    domainCounts[domain] = (domainCounts[domain] || 0) + 1;
                 }
             }
         }
@@ -258,16 +273,19 @@ export function extractURLs(content) {
         const matches = textContent.match(urlRegex) || [];
         
         matches.forEach(url => {
-            try {
-                // Ensure URL is properly formatted
-                const validUrl = new URL(url).toString();
-                urlSet.add(validUrl);
-            } catch (e) {
-                console.warn('Invalid URL found:', url);
+            const domain = extractDomain(url);
+            if (domain) {
+                domainCounts[domain] = (domainCounts[domain] || 0) + 1;
             }
         });
         
-        return Array.from(urlSet);
+        // Convert domain counts to array format compatible with redaction system
+        // Format: ["domain.com (2 links)", "otherdomain.com (1 link)"]
+        return Object.entries(domainCounts)
+            .filter(([domain]) => domain) // Extra safety check to filter out any empty domains
+            .map(([domain, count]) => 
+                `${domain} (${count} link${count === 1 ? '' : 's'})`
+            );
     } catch (error) {
         console.error('Error extracting URLs:', error);
         return [];
