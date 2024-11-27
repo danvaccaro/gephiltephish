@@ -21,43 +21,15 @@ interface EmailCardProps {
     onDelete: (emailId: number) => Promise<void>;
 }
 
-interface UrlsByDomain {
-    [domain: string]: string[];
-}
-
 export default function EmailCard({ email, onVote, onDelete }: EmailCardProps) {
     const [showUrls, setShowUrls] = useState(false);
     const [showContent, setShowContent] = useState(false);
-    const [expandedDomains, setExpandedDomains] = useState<{[key: string]: boolean}>({});
 
-    const toggleDomain = (domain: string) => {
-        setExpandedDomains(prev => ({
-            ...prev,
-            [domain]: !prev[domain]
-        }));
-    };
-
-    const groupUrlsByDomain = (urls: string[]): UrlsByDomain => {
-        return urls.reduce((acc: UrlsByDomain, url: string) => {
-            try {
-                const urlObj = new URL(url);
-                const domain = urlObj.hostname;
-                const path = `${urlObj.pathname}${urlObj.search}${urlObj.hash}`;
-                
-                if (!acc[domain]) {
-                    acc[domain] = [];
-                }
-                acc[domain].push(path || '/');
-            } catch (e) {
-                // If URL parsing fails, group under "Invalid URLs"
-                if (!acc["Invalid URLs"]) {
-                    acc["Invalid URLs"] = [];
-                }
-                acc["Invalid URLs"].push(url);
-            }
-            return acc;
-        }, {});
-    };
+    // Calculate total number of links from domain count strings
+    const totalLinks = email.urls.reduce((total, domainString) => {
+        const match = domainString.match(/\((\d+) links?\)/);
+        return total + (match ? parseInt(match[1]) : 0);
+    }, 0);
 
     return (
         <div className="bg-zinc-50 dark:bg-slate-900 border border-zinc-200 dark:border-slate-700 rounded-lg shadow-lg p-6 hover:bg-zinc-100 dark:hover:bg-slate-800 transition-colors">
@@ -118,37 +90,17 @@ export default function EmailCard({ email, onVote, onDelete }: EmailCardProps) {
                             >
                                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
                             </svg>
-                            URLs in Email ({email.urls.length})
+                            Links in Email ({totalLinks})
                         </button>
                         {showUrls && (
                             <div className="bg-white dark:bg-slate-800 rounded p-3">
-                                {Object.entries(groupUrlsByDomain(email.urls)).map(([domain, paths]) => (
-                                    <div key={domain} className="mb-2">
-                                        <button 
-                                            onClick={() => toggleDomain(domain)}
-                                            className="flex items-center text-sm font-medium text-zinc-800 dark:text-slate-200 hover:text-primary transition-colors w-full"
-                                        >
-                                            <svg 
-                                                xmlns="http://www.w3.org/2000/svg" 
-                                                className={`h-3 w-3 mr-1 transition-transform ${expandedDomains[domain] ? 'rotate-90' : ''}`} 
-                                                viewBox="0 0 20 20" 
-                                                fill="currentColor"
-                                            >
-                                                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                            </svg>
-                                            {domain} ({paths.length})
-                                        </button>
-                                        {expandedDomains[domain] && (
-                                            <ul className="list-disc list-inside space-y-1 ml-4 mt-1">
-                                                {paths.map((path, index) => (
-                                                    <li key={index} className="text-sm text-zinc-600 dark:text-slate-400 break-all">
-                                                        {path}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                    </div>
-                                ))}
+                                <ul className="space-y-1">
+                                    {email.urls.map((domain, index) => (
+                                        <li key={index} className="text-sm text-zinc-600 dark:text-slate-400">
+                                            {domain}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         )}
                     </div>
