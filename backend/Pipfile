@@ -5,10 +5,11 @@ name = "pypi"
 
 [packages]
 django = "*"
+django-cors-headers = "*"
 djangorestframework = "*"
 django-debug-toolbar = "*"
 scikit-learn = "*"
-
+python-dotenv = "*"
 
 [dev-packages]
 
