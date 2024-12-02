@@ -1,5 +1,8 @@
 {
   "name": "gephiltephish-extension",
   "version": "1.0.0",
-  "type": "module"
+  "devDependencies": {
+    "@babel/core": "^7.23.5",
+    "@babel/preset-env": "^7.23.5"
+  }
 }

@@ -1,0 +1,150 @@
+GephiltePhish System Architecture Report
+
+1. System Overview
+GephiltePhish is a community-driven platform for phishing detection that combines machine learning with human validation. The system consists of three main components: a frontend web application, a backend API server, and a Thunderbird extension.
+
+2. Frontend Module (Next.js/React)
+
+Structure:
+- Built with Next.js and React using TypeScript
+- Follows a component-based architecture
+- Uses Tailwind CSS for styling
+- Dark mode support built-in
+
+Key Components:
+- EmailCard: Main component for displaying email details
+  - Shows sender domain, subject, and content
+  - Displays extracted URLs with domain-based grouping
+  - Implements voting system (phishing/legitimate)
+  - Supports content expansion/collapse
+  - Handles user interactions (voting, deletion)
+
+Security Measures:
+- Client-side input validation
+- Authentication state management
+- Secure API communication
+- XSS prevention through React's built-in escaping
+- CSRF protection via authentication tokens
+
+3. Backend Module (Django/Python)
+
+Structure:
+- Django REST framework based API
+- PostgreSQL database
+- ML-powered prediction system
+
+Key Models:
+- Email
+  - Stores email metadata (sender, subject, content)
+  - Tracks voting statistics
+  - Maintains URL extraction data
+  - Links to submitting user
+- Vote
+  - Records user votes
+  - Enforces one vote per user per email
+  - Tracks vote timestamps
+
+API Endpoints:
+- /submit: Email submission endpoint
+  - Validates input data
+  - Stores preprocessed content
+  - Handles URL extraction
+- /predict: ML-based prediction endpoint
+  - Processes email content
+  - Returns phishing probability
+
+Security Measures:
+- Authentication required for all endpoints
+- Input validation and sanitization
+- SQL injection prevention
+- Rate limiting
+- Secure password hashing
+- HTTPS enforcement
+- Logging system for security monitoring
+
+4. Thunderbird Extension
+
+Structure:
+- JavaScript-based browser extension
+- Modular design with separate preprocessing and UI components
+
+Key Features:
+- Email preprocessing
+  - HTML to text conversion
+  - URL extraction and domain counting
+  - Content sanitization
+  - Entity decoding
+- Security features
+  - Safe URI encoding/decoding
+  - HTML sanitization
+  - XSS prevention
+- URL Analysis
+  - Domain extraction
+  - Link counting
+  - Pattern matching
+
+5. Testing Suite
+
+Frontend Testing:
+- Jest and React Testing Library
+- Component testing
+- User interaction simulation
+- State management testing
+- Snapshot testing
+- Coverage requirements: >80%
+
+Backend Testing:
+- Pytest framework
+- API endpoint testing
+- Model validation testing
+- Authentication testing
+- Database operation testing
+- Coverage requirements: >90%
+
+Extension Testing:
+- Jest-based test suite
+- Unit testing for utility functions
+- HTML preprocessing testing
+- URL extraction validation
+- Coverage requirements: >85%
+
+Continuous Integration:
+- Automated testing via test-all.sh script
+- Pre-commit hooks for code quality
+- Linting and formatting checks
+
+6. Security Safeguards
+
+Cross-Component Security:
+- Authentication and authorization
+- Input validation and sanitization
+- XSS prevention
+- CSRF protection
+- Rate limiting
+- Secure communication (HTTPS)
+- Data encryption
+- Logging and monitoring
+
+Data Protection:
+- Email content sanitization
+- URL extraction security
+- Personal information handling
+- Database security
+- Access control
+
+7. Integration Points
+
+- Frontend ↔ Backend: REST API communication
+- Extension ↔ Backend: API integration
+- User Authentication: Shared across components
+- Data Flow: Standardized formats and protocols
+
+8. Monitoring and Logging
+
+- Comprehensive error logging
+- Security event tracking
+- Performance monitoring
+- User activity logging
+- System health checks
+
+This architecture provides a robust, secure, and scalable solution for community-driven phishing detection, combining automated analysis with human validation in a well-tested and monitored environment.

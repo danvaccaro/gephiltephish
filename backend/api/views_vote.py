@@ -15,6 +15,8 @@ def get_emails(request):
     # Get filter parameters
     show_mine_only = request.GET.get('show_mine', '').lower() == 'true'
     show_unvoted_only = request.GET.get('show_unvoted', '').lower() == 'true'
+    domain_filter = request.GET.get('domain')
+    min_phishing_votes = request.GET.get('min_phishing_votes')
     
     # Base query
     query = Email.objects.all()
@@ -22,6 +24,12 @@ def get_emails(request):
     # Apply filters if requested
     if show_mine_only:
         query = query.filter(user=request.user)
+    
+    if domain_filter:
+        query = query.filter(sender_domain=domain_filter)
+        
+    if min_phishing_votes:
+        query = query.filter(votes_phishing__gte=int(min_phishing_votes))
     
     # Get all emails and annotate with user's vote status
     emails = query.annotate(
@@ -152,7 +160,7 @@ def delete_email(request, email_id):
         
         # Delete the email
         email.delete()
-        return Response({'message': 'Email deleted successfully'})
+        return Response(status=status.HTTP_204_NO_CONTENT)
         
     except Email.DoesNotExist:
         return Response(

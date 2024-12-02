@@ -9,7 +9,7 @@ class Email(models.Model):
     date = models.CharField(max_length=100)  # Store as string to preserve exact format
     content = models.TextField()
     urls = models.JSONField(default=list)  # Store extracted URLs as a JSON array
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)  # Auto-populate on creation
     votes_phishing = models.IntegerField(default=0)
     votes_legitimate = models.IntegerField(default=0)
     

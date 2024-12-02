@@ -5,6 +5,7 @@ import { preprocessEmailBody, preprocessSubject, extractURLs, utils } from './pr
 let isAuthenticated = false;
 let currentEmailMessage = null;
 let currentAction = null; // Track whether we're doing prediction or submission
+let predictionWindowId = null; // Track the prediction window ID
 
 // Get stored auth token
 async function getAuthToken() {
@@ -13,7 +14,7 @@ async function getAuthToken() {
 }
 
 // Listen for auth status updates from popup and redaction window
-messenger.runtime.onMessage.addListener((message) => {
+messenger.runtime.onMessage.addListener(async (message) => {
   if (message.type === 'AUTH_STATUS') {
     isAuthenticated = message.isAuthenticated;
   } else if (message.type === 'SUBMIT_REDACTED_EMAIL') {
@@ -22,6 +23,21 @@ messenger.runtime.onMessage.addListener((message) => {
   } else if (message.type === 'PREDICT_REDACTED_EMAIL') {
     // Handle redacted content prediction
     predictRedactedEmail(message.subject, message.content);
+  } else if (message.type === 'OPEN_PREDICTION_WINDOW') {
+    // Open prediction window in loading state
+    const window = await messenger.windows.create({
+      url: 'prediction.html',
+      type: "popup",
+      width: 450,
+      height: 200
+    });
+    predictionWindowId = window.id;
+  } else if (message.action === 'retryPrediction' && currentEmailMessage) {
+    // Handle prediction retry
+    const processedContent = await processMessageParts(currentEmailMessage.id, currentEmailMessage.parts || []);
+    const content = processedContent.htmlContent || processedContent.textContent;
+    const subject = currentEmailMessage.headers.subject[0];
+    await predictRedactedEmail(subject, content);
   }
 });
 
@@ -55,14 +71,30 @@ async function showLoginPopup() {
   });
 }
 
-async function showPredictionWindow(phishy) {
-  const url = `prediction.html?phishy=${phishy}`;
-  await messenger.windows.create({
-    url: url,
-    type: "popup",
-    width: 450,
-    height: 200
-  });
+async function updatePredictionWindow(phishy = null, error = null) {
+  if (!predictionWindowId) return;
+
+  try {
+    let url = 'prediction.html';
+    if (phishy !== null || error !== null) {
+      url += '?';
+      if (error) {
+        url += `error=${encodeURIComponent(error)}`;
+      } else {
+        url += `phishy=${phishy}`;
+      }
+    }
+
+    // Get the tabs in the prediction window
+    const tabs = await messenger.tabs.query({ windowId: predictionWindowId });
+    if (tabs.length > 0) {
+      // Update the first tab's URL
+      await messenger.tabs.update(tabs[0].id, { url: url });
+    }
+  } catch (error) {
+    console.error('Error updating prediction window:', error);
+    predictionWindowId = null;
+  }
 }
 
 async function showSubmissionResult(success) {
@@ -242,8 +274,7 @@ async function submitRedactedEmail(redactedSubject, redactedContent) {
       await showLoginPopup();
     }
   } finally {
-    // Clear the stored message and action
-    currentEmailMessage = null;
+    // Don't clear currentEmailMessage here to allow for retries
     currentAction = null;
   }
 }
@@ -255,6 +286,7 @@ async function predictRedactedEmail(redactedSubject, redactedContent) {
     
     if (!currentEmailMessage) {
       console.error("No email message stored for prediction");
+      await updatePredictionWindow(null, "No email message found for prediction");
       return;
     }
 
@@ -283,22 +315,25 @@ async function predictRedactedEmail(redactedSubject, redactedContent) {
         await showLoginPopup();
         return;
       }
-      throw new Error('API request failed');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'API request failed');
     }
 
     const result = await response.json();
-    await showPredictionWindow(result.phishy);
+    if (!result.hasOwnProperty('phishy') || !['yes', 'no'].includes(result.phishy)) {
+      throw new Error('Invalid response format from prediction service');
+    }
+    
+    await updatePredictionWindow(result.phishy);
   } catch (error) {
     console.error("Error predicting message:", error);
+    await updatePredictionWindow(null, error.message || "An unexpected error occurred");
     if (error.message?.includes('401') || error.message?.includes('403')) {
       isAuthenticated = false;
       await showLoginPopup();
     }
-  } finally {
-    // Clear the stored message and action
-    currentEmailMessage = null;
-    currentAction = null;
   }
+  // Don't clear currentEmailMessage to allow for retries
 }
 
 messenger.menus.onClicked.addListener(async (info, tab) => {
@@ -341,9 +376,11 @@ messenger.menus.onClicked.addListener(async (info, tab) => {
         await showRedactionWindow(subject, content);
       } else {
         console.error("No message selected");
+        await updatePredictionWindow(null, "No email message selected");
       }
     } catch (error) {
       console.error("Error processing message:", error);
+      await updatePredictionWindow(null, error.message || "Error processing email message");
       // If error is due to authentication, show login popup
       if (error.message?.includes('401') || error.message?.includes('403')) {
         isAuthenticated = false;
@@ -380,6 +417,7 @@ messenger.menus.onClicked.addListener(async (info, tab) => {
         await showRedactionWindow(subject, content);
       } else {
         console.error("No message selected");
+        await showSubmissionResult(false);
       }
     } catch (error) {
       console.error("Error processing message:", error);
@@ -390,5 +428,12 @@ messenger.menus.onClicked.addListener(async (info, tab) => {
         await showLoginPopup();
       }
     }
+  }
+});
+
+// Listen for window close to reset the prediction window ID
+messenger.windows.onRemoved.addListener((windowId) => {
+  if (windowId === predictionWindowId) {
+    predictionWindowId = null;
   }
 });

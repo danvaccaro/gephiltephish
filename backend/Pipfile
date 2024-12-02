@@ -10,6 +10,7 @@ djangorestframework = "*"
 django-debug-toolbar = "*"
 scikit-learn = "*"
 python-dotenv = "*"
+openai = "*"
 
 [dev-packages]
 

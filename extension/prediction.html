@@ -29,9 +29,34 @@
       background-color: #dcfce7;
       border-color: #bbf7d0;
     }
+    .error {
+      color: #854d0e;
+      background-color: #fef9c3;
+      border-color: #fde68a;
+    }
+    .loading {
+      color: #1e40af;
+      background-color: #dbeafe;
+      border-color: #bfdbfe;
+    }
     .prediction {
       font-size: 24px;
       font-weight: bold;
+    }
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s steps(5, end) infinite;
+    }
+    @keyframes dots {
+      0%, 20% { content: ''; }
+      40% { content: '.'; }
+      60% { content: '..'; }
+      80%, 100% { content: '...'; }
+    }
+    .error-details {
+      font-size: 14px;
+      margin-top: 8px;
+      color: inherit;
     }
     .close-button {
       padding: 8px 16px;
@@ -45,14 +70,35 @@
     .close-button:hover {
       background: #444;
     }
+    .retry-button {
+      padding: 8px 16px;
+      background: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .retry-button:hover {
+      background: #0369a1;
+    }
+    .button-group {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div id="resultCard" class="result-card">
-      <div id="prediction" class="prediction"></div>
+    <div id="resultCard" class="result-card loading">
+      <div id="prediction" class="prediction">Submitting to model for analysis<span class="loading-dots"></span></div>
+      <div id="errorDetails" class="error-details"></div>
     </div>
-    <button id="closeButton" class="close-button">Close</button>
+    <div class="button-group">
+      <button id="retryButton" class="retry-button" style="display: none;">Try Again</button>
+      <button id="closeButton" class="close-button">Close</button>
+    </div>
   </div>
   <script src="prediction.js"></script>
 </body>

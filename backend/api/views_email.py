@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from .models import Email
 from .serializers import EmailSerializer
-from .ml_utils import predict_phishing
+from .views_openai import predict_with_openai
 import logging
 
 logger = logging.getLogger(__name__)
@@ -71,10 +71,28 @@ def predict(request):
         subject = data.get('subject', '')
         content = data.get('content', '')
 
-        # Use the prediction function from ml_utils
-        is_phishing = predict_phishing(sender, subject, content)
-        
-        # Return simple yes/no response
-        return Response({'phishy': 'yes' if is_phishing else 'no'})
+        # Validate input data
+        if not sender or not content or not subject:
+            return Response(
+                {"error": "sender_domain, subject, and content are required"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Use OpenAI for prediction with retry logic
+            is_phishing = predict_with_openai(sender, subject, content)
+            return Response({'phishy': 'yes' if is_phishing else 'no'})
+            
+        except Exception as e:
+            logger.error(f"OpenAI prediction error: {str(e)}")
+            return Response(
+                {"error": "Failed to get prediction from OpenAI. Please try again later."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+            
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Unexpected error in predict endpoint: {str(e)}", exc_info=True)
+        return Response(
+            {"error": "An unexpected error occurred"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

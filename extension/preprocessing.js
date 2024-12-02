@@ -150,7 +150,7 @@ function htmlToText(html) {
  * @param {string} content - The raw email content
  * @returns {string} The preprocessed content
  */
-export function preprocessEmailBody(content) {
+function preprocessEmailBody(content) {
     console.log('preprocessEmailBody received content length:', content?.length || 0);
     
     try {
@@ -188,7 +188,7 @@ export function preprocessEmailBody(content) {
  * @param {string} subject - The raw email subject
  * @returns {string} The preprocessed subject
  */
-export function preprocessSubject(subject) {
+function preprocessSubject(subject) {
     console.log('preprocessSubject received length:', subject?.length || 0);
     
     try {
@@ -241,7 +241,7 @@ function extractDomain(urlString) {
  * @param {string} content - The raw email content
  * @returns {string[]} Array of domain-based URLs with counts
  */
-export function extractURLs(content) {
+function extractURLs(content) {
     console.log('extractURLs received content length:', content?.length || 0);
     
     try {
@@ -292,7 +292,8 @@ export function extractURLs(content) {
     }
 }
 
-// Export additional utility functions for use in other modules
+// Export using ES modules
+export { preprocessEmailBody, preprocessSubject, extractURLs };
 export const utils = {
     safeEncodeURIComponent,
     safeDecodeURIComponent

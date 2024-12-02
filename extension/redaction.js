@@ -278,6 +278,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Processing redacted subject length:', redactedSubject.length);
         console.log('Processing redacted content length:', redactedContent.length);
         
+        // For prediction, open the loading window first
+        if (currentAction === 'predict') {
+          await messenger.runtime.sendMessage({
+            type: 'OPEN_PREDICTION_WINDOW'
+          });
+        }
+        
         // Send message to background script with redacted content
         await messenger.runtime.sendMessage({
           type: currentAction === 'predict' ? 'PREDICT_REDACTED_EMAIL' : 'SUBMIT_REDACTED_EMAIL',
