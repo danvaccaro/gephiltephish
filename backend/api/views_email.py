@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from .models import Email
 from .serializers import EmailSerializer
 from .views_openai import predict_with_openai
+from .views_pipeline import predict_with_pipeline
 import logging
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,7 @@ def predict(request):
         sender = data.get('sender_domain', '')
         subject = data.get('subject', '')
         content = data.get('content', '')
+        model = data.get('model', 'openai')  # Default to OpenAI if not specified
 
         # Validate input data
         if not sender or not content or not subject:
@@ -79,14 +81,26 @@ def predict(request):
             )
 
         try:
-            # Use OpenAI for prediction with retry logic
-            is_phishing = predict_with_openai(sender, subject, content)
-            return Response({'phishy': 'yes' if is_phishing else 'no'})
+            if model == 'pipeline':
+                # Use scikit-learn pipeline
+                is_phishing, confidence = predict_with_pipeline(sender, subject, content)
+                return Response({
+                    'phishy': 'yes' if is_phishing else 'no',
+                    'confidence': confidence,
+                    'model': 'pipeline'
+                })
+            else:
+                # Use OpenAI without confidence score
+                is_phishing = predict_with_openai(sender, subject, content)
+                return Response({
+                    'phishy': 'yes' if is_phishing else 'no',
+                    'model': 'openai'
+                })
             
         except Exception as e:
-            logger.error(f"OpenAI prediction error: {str(e)}")
+            logger.error(f"Prediction error with {model}: {str(e)}")
             return Response(
-                {"error": "Failed to get prediction from OpenAI. Please try again later."},
+                {"error": f"Failed to get prediction from {model}. Please try again later."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
             

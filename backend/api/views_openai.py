@@ -15,12 +15,12 @@ client = OpenAI(
     organization=os.getenv('OPENAI_ORG_ID')
 )
 
-# Rate limiting setup
+# Rate limiting setup from environment variables
 # Keep track of requests in a rolling window
 request_timestamps = deque()
-RATE_LIMIT_WINDOW = 60  # Window size in seconds
-MAX_REQUESTS_PER_WINDOW = 50  # Maximum requests per minute
-COOLDOWN_DELAY = 1  # Delay between requests in seconds
+RATE_LIMIT_WINDOW = int(os.getenv('OPENAI_RATE_LIMIT_WINDOW', 60))  # Window size in seconds
+MAX_REQUESTS_PER_WINDOW = int(os.getenv('OPENAI_MAX_REQUESTS_PER_WINDOW', 50))  # Maximum requests per minute
+COOLDOWN_DELAY = int(os.getenv('OPENAI_COOLDOWN_DELAY', 1))  # Delay between requests in seconds
 
 def check_rate_limit():
     """
@@ -55,12 +55,12 @@ def predict_with_openai(sender: str, subject: str, content: str, max_retries: in
         Exception: If unable to get a valid response after max_retries
     """
     # Combine all text fields
-    full_text = f"Sender Domain: {sender}\nSubject: {subject}\nContent: {content}"
+    full_text = f"SENDER_DOMAIN: {sender}\nSUBJECT: {subject}\nBODY: {content}"
     
     # System prompt for phishing detection
     system_prompt = """You are a cybersecurity expert specializing in phishing email detection. 
     Analyze the provided email and determine if it's a phishing attempt. 
-    Consider sender domain legitimacy, urgency tactics, suspicious links, and grammatical errors. 
+    Consider sender domain legitimacy, urgency tactics, suspicious links, too-good-to-be-true offers, grammatical errors, and other red flags.
     You must respond with ONLY the word 'yes' if it's phishing or 'no' if it's legitimate.
     Do not include any other text, explanation, or punctuation in your response."""
 
@@ -79,7 +79,7 @@ def predict_with_openai(sender: str, subject: str, content: str, max_retries: in
             
             # Make API call to OpenAI
             response = client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=os.getenv('OPENAI_MODEL_NAME', 'gpt-4o-mini'),
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": full_text}

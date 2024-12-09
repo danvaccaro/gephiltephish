@@ -15,14 +15,14 @@ class RegisterView(generics.CreateAPIView):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
-    username = request.data.get('username')
+    email = request.data.get('email')
     password = request.data.get('password')
 
-    if not username or not password:
-        return Response({'error': 'Please provide both username and password'},
+    if not email or not password:
+        return Response({'error': 'Please provide both email and password'},
                       status=status.HTTP_400_BAD_REQUEST)
 
-    user = authenticate(username=username, password=password)
+    user = authenticate(username=email, password=password)
 
     if not user:
         return Response({'error': 'Invalid credentials'},
@@ -33,7 +33,7 @@ def login(request):
     return Response({
         'token': token.key,
         'user_id': user.id,
-        'username': user.username
+        'email': user.email
     })
 
 @api_view(['POST'])
