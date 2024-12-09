@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { apiRequest, API_ENDPOINTS } from '../config/api';
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -19,7 +18,7 @@ export default function RegisterPage() {
     setError('');
     setIsLoading(true);
 
-    if (!username || !email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       setIsLoading(false);
       return;
@@ -41,7 +40,6 @@ export default function RegisterPage() {
       await apiRequest(API_ENDPOINTS.REGISTER, {
         method: 'POST',
         body: JSON.stringify({
-          username,
           email,
           password,
           password2: confirmPassword
@@ -72,23 +70,6 @@ export default function RegisterPage() {
             </div>
           )}
           <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label htmlFor="username" className="sr-only">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                required
-                className="appearance-none rounded-lg relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
             <div>
               <label htmlFor="email" className="sr-only">
                 Email address

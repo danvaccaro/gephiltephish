@@ -5,12 +5,12 @@ import { apiRequest, API_ENDPOINTS } from '../config/api';
 import { useRouter } from 'next/navigation';
 
 interface User {
-  username: string;
+  email: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
   token: string | null;
@@ -27,20 +27,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkAuth = async () => {
     try {
       const storedToken = localStorage.getItem('token');
-      const storedUsername = localStorage.getItem('username');
+      const storedEmail = localStorage.getItem('email');
       
-      if (!storedToken || !storedUsername) {
+      if (!storedToken || !storedEmail) {
         setIsLoading(false);
         return;
       }
 
       // Set both token and user state from localStorage
       setToken(storedToken);
-      setUser({ username: storedUsername });
+      setUser({ email: storedEmail });
     } catch (error) {
       console.error('Auth check failed:', error);
       localStorage.removeItem('token');
-      localStorage.removeItem('username');
+      localStorage.removeItem('email');
       setToken(null);
       setUser(null);
     } finally {
@@ -52,19 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
       const data = await apiRequest(API_ENDPOINTS.LOGIN, {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (data && data.token) {
         localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.username);
+        localStorage.setItem('email', data.email);
         setToken(data.token);
-        setUser({ username: data.username });
+        setUser({ email: data.email });
         router.push('/');
       }
     } catch (error) {
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout failed:', error);
     } finally {
       localStorage.removeItem('token');
-      localStorage.removeItem('username');
+      localStorage.removeItem('email');
       setToken(null);
       setUser(null);
       setIsLoading(false);

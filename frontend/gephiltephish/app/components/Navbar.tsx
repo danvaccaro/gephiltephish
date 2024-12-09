@@ -70,7 +70,7 @@ export default function Navbar() {
                 user ? (
                   <>
                     <span className="text-sm text-gray-700 dark:text-gray-300">
-                      {user.username}
+                      {user.email && user.email}
                     </span>
                     <button
                       onClick={handleLogout}

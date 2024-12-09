@@ -1,11 +1,13 @@
 // background.js - Main logic for Thunderbird extension focused on phishing detection
 
 import { preprocessEmailBody, preprocessSubject, extractURLs, utils } from './preprocessing.js';
+import { config } from './config.js';
 
 let isAuthenticated = false;
 let currentEmailMessage = null;
 let currentAction = null; // Track whether we're doing prediction or submission
 let predictionWindowId = null; // Track the prediction window ID
+let currentModel = 'openai'; // Track current model selection
 
 // Get stored auth token
 async function getAuthToken() {
@@ -28,12 +30,13 @@ messenger.runtime.onMessage.addListener(async (message) => {
     const window = await messenger.windows.create({
       url: 'prediction.html',
       type: "popup",
-      width: 450,
-      height: 200
+      width: config.WINDOWS.PREDICTION.WIDTH,
+      height: config.WINDOWS.PREDICTION.HEIGHT
     });
     predictionWindowId = window.id;
   } else if (message.action === 'retryPrediction' && currentEmailMessage) {
-    // Handle prediction retry
+    // Handle prediction retry with optional model selection
+    currentModel = message.model || currentModel;
     const processedContent = await processMessageParts(currentEmailMessage.id, currentEmailMessage.parts || []);
     const content = processedContent.htmlContent || processedContent.textContent;
     const subject = currentEmailMessage.headers.subject[0];
@@ -49,7 +52,7 @@ async function checkAuth() {
       return false;
     }
 
-    const response = await fetch('http://localhost:8000/api/get_emails/', {
+    const response = await fetch(`${config.API_BASE_URL}/get_emails/`, {
       headers: {
         'Authorization': `Token ${token}`
       }
@@ -66,23 +69,30 @@ async function showLoginPopup() {
   await messenger.windows.create({
     url: "popup.html",
     type: "popup",
-    width: 350,
-    height: 450
+    width: config.WINDOWS.POPUP.WIDTH,
+    height: config.WINDOWS.POPUP.HEIGHT
   });
 }
 
-async function updatePredictionWindow(phishy = null, error = null) {
+async function updatePredictionWindow(phishy = null, error = null, model = null, confidence = null) {
   if (!predictionWindowId) return;
 
   try {
     let url = 'prediction.html';
     if (phishy !== null || error !== null) {
-      url += '?';
+      const params = new URLSearchParams();
       if (error) {
-        url += `error=${encodeURIComponent(error)}`;
+        params.append('error', encodeURIComponent(error));
       } else {
-        url += `phishy=${phishy}`;
+        params.append('phishy', phishy);
+        if (model) {
+          params.append('model', model);
+          if (model === 'pipeline' && confidence !== null) {
+            params.append('confidence', confidence);
+          }
+        }
       }
+      url += '?' + params.toString();
     }
 
     // Get the tabs in the prediction window
@@ -102,8 +112,8 @@ async function showSubmissionResult(success) {
   await messenger.windows.create({
     url: url,
     type: "popup",
-    width: 450,
-    height: 200
+    width: config.WINDOWS.PREDICTION.WIDTH,
+    height: config.WINDOWS.PREDICTION.HEIGHT
   });
 }
 
@@ -126,8 +136,8 @@ async function showRedactionWindow(subject, content) {
     await messenger.windows.create({
       url: url,
       type: "popup",
-      width: 900,
-      height: 700
+      width: config.WINDOWS.REDACTION.WIDTH,
+      height: config.WINDOWS.REDACTION.HEIGHT
     });
   } catch (error) {
     console.error('Error showing redaction window:', error);
@@ -221,7 +231,8 @@ async function emailToJSON(fullMessage, redactedSubject = null, redactedContent 
     subject: preprocessSubject(subject),
     date: fullMessage.headers.date[0],
     content: preprocessEmailBody(bodyContent),
-    urls: urls
+    urls: urls,
+    model: currentModel  // Include current model selection
   };
   return analysisData;
 }
@@ -247,7 +258,7 @@ async function submitRedactedEmail(redactedSubject, redactedContent) {
     console.log('Prepared email data for submission');
 
     // Send POST request to submit endpoint using redacted content
-    const response = await fetch('http://localhost:8000/api/submit/', {
+    const response = await fetch(`${config.API_BASE_URL}/submit/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -300,7 +311,7 @@ async function predictRedactedEmail(redactedSubject, redactedContent) {
     console.log('Prepared email data for prediction');
 
     // Send POST request to predict endpoint using redacted content
-    const response = await fetch('http://localhost:8000/api/predict/', {
+    const response = await fetch(`${config.API_BASE_URL}/predict/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -324,7 +335,12 @@ async function predictRedactedEmail(redactedSubject, redactedContent) {
       throw new Error('Invalid response format from prediction service');
     }
     
-    await updatePredictionWindow(result.phishy);
+    await updatePredictionWindow(
+      result.phishy,
+      null,
+      result.model,
+      result.confidence
+    );
   } catch (error) {
     console.error("Error predicting message:", error);
     await updatePredictionWindow(null, error.message || "An unexpected error occurred");
